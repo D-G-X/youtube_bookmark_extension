@@ -3,21 +3,26 @@
   "version": "0.0.1",
   "description": "Extension to bookmark timestamps of YouTube videos",
   "manifest_version": 3,
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": ["storage", "tabs", "scripting", "cookies"],
   "host_permissions": ["https://*.youtube.com/*"],
   "background": {
     "service_worker": "background.js"
   },
   "web_accessible_resources": [
     {
-      "resources": ["assets/add_bookmark_btn.svg"],
+      "resources": [
+        "assets/add_bookmark_btn.svg",
+        "assets/play_bookmark_btn.svg",
+        "assets/delete_bookmark_btn.svg"
+      ],
       "matches": ["https://*.youtube.com/*"]
     }
   ],
   "content_scripts": [
     {
       "matches": ["https://*.youtube.com/*"],
-      "js": ["contentScript.js"]
+      "js": ["contentScript.js"],
+      "all_frames": true
     }
   ],
   "action": {

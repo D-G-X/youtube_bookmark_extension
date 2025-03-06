@@ -16,7 +16,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
           tabId,
           {
             type: "NEW",
-            value: "abcd",
+            value: null,
             videoId: videoId,
           },
           (response) => {
