@@ -3,15 +3,40 @@
   let currentVideoBookmarks = [];
 
   chrome.runtime.onMessage.addListener(async (obj, sender, sendResponse) => {
-    console.log(obj);
     const { type, value, videoId } = obj;
 
-    console.log("Received NEW message for video:", videoId);
     if (type === "NEW") {
       currentVideo = videoId; // Update the current video ID
       await newVideoLoaded();
       sendResponse({ success: true, videoId: videoId }); // Send a response back
       return true; // Indicate that the response will be sent asynchronously
+    } else if (type === "PLAY" && value && youtubePlayer) {
+      try {
+        youtubePlayer.currentTime = value;
+        sendResponse({ success: true, videoId: videoId });
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    } else if (type === "DELETE" && value) {
+      try {
+        currentVideoBookmarks = currentVideoBookmarks.filter(
+          (b) => b.time != value
+        );
+        chrome.storage.sync.set({
+          [currentVideo]: JSON.stringify(currentVideoBookmarks),
+        });
+        sendResponse({
+          success: true,
+          videoId: videoId,
+          currentVideoBookmarks: currentVideoBookmarks,
+        });
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
     }
 
     return false; // No handling for other message types
@@ -26,71 +51,81 @@
   };
 
   const newVideoLoaded = async () => {
-    const bookmarkBtnExists = document.getElementById("dgx-bookmark-btn");
-    // currentVideoBookmarks = await fetchBookmarks();
+    const interval = setInterval(() => {
+      youtubePlayer = document.querySelector(".video-stream");
 
-    if (!bookmarkBtnExists) {
-      const bookmarkBtn = document.createElement("button");
-      bookmarkBtn.id = "dgx-bookmark-btn";
-      bookmarkBtn.className = "ytp-button";
+      if (youtubePlayer) {
+        clearInterval(interval); // Stop checking once the player is available
+        const bookmarkBtnExists = document.getElementById("dgx-bookmark-btn");
 
-      const parentContainer = document.querySelector(".ytp-right-controls");
-      parentContainer.style.display = "flex"; // Make the container a flex container
-      parentContainer.style.alignItems = "center";
+        if (!bookmarkBtnExists) {
+          const bookmarkBtn = document.createElement("button");
+          bookmarkBtn.id = "dgx-bookmark-btn";
+          bookmarkBtn.className = "ytp-button";
 
-      bookmarkBtn.style.width = "48px";
-      bookmarkBtn.style.height = "48px";
-      bookmarkBtn.style.display = "inline-flex";
-      bookmarkBtn.style.justifyContent = "center";
-      bookmarkBtn.style.alignItems = "center";
-      bookmarkBtn.style.padding = "10px";
-      bookmarkBtn.style.border = "none";
+          const parentContainer = document.querySelector(".ytp-right-controls");
+          parentContainer.style.display = "flex"; // Make the container a flex container
+          parentContainer.style.alignItems = "center";
 
-      const bookmarkBtnIcon = document.createElement("img");
-      bookmarkBtnIcon.src = chrome.runtime.getURL(
-        "assets/add_bookmark_btn.svg"
-      );
-      // Apply styles to the image
-      bookmarkBtnIcon.style.maxWidth = "100%";
-      bookmarkBtnIcon.style.maxHeight = "100%";
-      bookmarkBtnIcon.style.objectFit = "contain";
-      //   bookmarkBtnIcon.width = "36";
-      //   bookmarkBtnIcon.height = "36";
-      bookmarkBtnIcon.title =
-        "Click to add bookmark for the current timestamp.";
+          bookmarkBtn.style.width = "48px";
+          bookmarkBtn.style.height = "48px";
+          bookmarkBtn.style.display = "inline-flex";
+          bookmarkBtn.style.justifyContent = "center";
+          bookmarkBtn.style.alignItems = "center";
+          bookmarkBtn.style.padding = "10px";
+          bookmarkBtn.style.border = "none";
 
-      bookmarkBtn.append(bookmarkBtnIcon);
+          const bookmarkBtnIcon = document.createElement("img");
+          bookmarkBtnIcon.src = chrome.runtime.getURL(
+            "assets/add_bookmark_btn.svg"
+          );
+          bookmarkBtnIcon.style.maxWidth = "100%";
+          bookmarkBtnIcon.style.maxHeight = "100%";
+          bookmarkBtnIcon.style.objectFit = "contain";
+          bookmarkBtnIcon.title =
+            "Click to add bookmark for the current timestamp.";
 
-      youtubeLeftControls =
-        document.getElementsByClassName("ytp-right-controls")[0];
-      youtubePlayer = document.getElementsByClassName("video-stream")[0];
+          bookmarkBtn.append(bookmarkBtnIcon);
 
-      youtubeLeftControls.prepend(bookmarkBtn);
-      //   bookmarkBtn.addEventListener("click", addNewBookmark);
-    }
+          youtubeLeftControls = document.querySelector(".ytp-right-controls");
+          youtubeLeftControls.prepend(bookmarkBtn);
+          bookmarkBtn.addEventListener("click", addNewBookmark);
+        }
+      }
+    }, 500); // Check every 500ms until the player is available
   };
 
-  const addNewBookmarkEventHandler = async () => {
+  const addNewBookmark = async () => {
     const currentTime = youtubePlayer.currentTime;
     const newBookmark = {
       time: currentTime,
-      desc: "Bookmark added at" + getTime(currentTime),
+      desc: "Bookmark added at " + getTime(currentTime),
     };
 
     currentVideoBookmarks = await fetchBookmarks();
 
-    chrome.storage.sync.set({
-      [currentVideo]: JSON.stringify(
-        [...currentVideoBookmarks, newBookmark].sort((a, b) => a.time - b.time)
-      ),
-    });
+    chrome.storage.sync.set(
+      {
+        [currentVideo]: JSON.stringify(
+          [...currentVideoBookmarks, newBookmark].sort(
+            (a, b) => a.time - b.time
+          )
+        ),
+      },
+      function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving bookmark:", chrome.runtime.lastError);
+        } else {
+          console.log("Bookmark saved successfully.");
+        }
+      }
+    );
   };
 
   const getTime = (t) => {
     var date = new Date(0);
     date.setSeconds(t);
-
-    return date.toISOString.substr(11, 8);
+    return date.toISOString().substring(11, 19);
   };
 
   newVideoLoaded();
