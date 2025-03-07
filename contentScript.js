@@ -1,12 +1,14 @@
 (() => {
   let youtubeLeftControls, youtubePlayer;
   let currentVideoBookmarks = [];
+  let currentVideo = null;
 
   chrome.runtime.onMessage.addListener(async (obj, sender, sendResponse) => {
     const { type, value, videoId } = obj;
 
+    currentVideo = videoId; // Update the current video ID
+
     if (type === "NEW") {
-      currentVideo = videoId; // Update the current video ID
       await newVideoLoaded();
       sendResponse({ success: true, videoId: videoId }); // Send a response back
       return true; // Indicate that the response will be sent asynchronously
@@ -21,6 +23,7 @@
       }
     } else if (type === "DELETE" && value) {
       try {
+        currentVideoBookmarks = await fetchBookmarks();
         currentVideoBookmarks = currentVideoBookmarks.filter(
           (b) => b.time != value
         );

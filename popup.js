@@ -1,5 +1,3 @@
-// import { getActiveTab } from "./utilsFunction";
-
 async function getActiveTab() {
   let queryOptions = { active: true, currentWindow: true };
   let [tab] = await chrome.tabs.query(queryOptions);
@@ -59,15 +57,20 @@ const onDelete = async (e) => {
     "bookmark-" + bookmarkTime
   );
 
+  const queryParameters = activeTab.url.split("?")[1];
+  const urlParameters = new URLSearchParams(queryParameters);
+
+  const currentVideo = urlParameters.get("v");
+
   bookmarkElementToDelete.parentNode.removeChild(bookmarkElementToDelete);
-  chrome.tabs.sendMessage(
-    activeTab.id,
-    {
-      type: "DELETE",
-      value: bookmarkTime,
-    },
-    renderBookmarks
-  );
+  const response = await chrome.tabs.sendMessage(activeTab.id, {
+    type: "DELETE",
+    value: bookmarkTime,
+    videoId: currentVideo,
+  });
+
+  console.log("response", response.newBookmarks);
+  renderBookmarks(response.newBookmarks);
 };
 
 const setBookmarkAttributes = (
@@ -76,6 +79,9 @@ const setBookmarkAttributes = (
   controlParentElement
 ) => {
   const controlElement = document.createElement("img");
+  controlElement.style.padding = "5px 5px";
+  controlElement.style.width = "18px";
+  controlElement.style.height = "20px";
   controlElement.src = "assets/" + attributeType + "_bookmark_btn.svg";
   controlElement.title = attributeType;
   controlElement.addEventListener("click", eventListener);
