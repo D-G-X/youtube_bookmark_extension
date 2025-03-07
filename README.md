@@ -1,1 +1,1 @@
-A chrome extension to bookmark timestamps of YouTube video
+A chrome extension to bookmark timestamps of YouTube videos
